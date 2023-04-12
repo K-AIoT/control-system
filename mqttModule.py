@@ -1,7 +1,6 @@
 import paho.mqtt.client as mqtt
-import time
 
-mqttBrokerIp = "172.29.69.158"
+mqttBrokerIp = "192.168.50.192"
 mqttClientSubscriptions = ["sensors/temperature","sensors/humidity", "sensors/temperature2"]
 
 #Function that creates an MQTT client, defines its callback functions and connects it to the broker via its IP address.
@@ -32,12 +31,5 @@ def on_disconnect(client, userdata, rc):
 #Message callback function, specifically to handle any messages on topics that match "sensors/temperature" (Including with wildcard use).
 def tempSensorCallback(client, userdata, message):
     print("Received Temp Message: ", str(message.payload.decode("utf-8")))
-
-mqttClient = makeClient("mqttClient")
-
-while True:
-
-    time.sleep(1)
-
 
         
