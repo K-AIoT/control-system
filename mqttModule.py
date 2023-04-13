@@ -32,4 +32,8 @@ def on_disconnect(client, userdata, rc):
 def tempSensorCallback(client, userdata, message):
     print("Received Temp Message: ", str(message.payload.decode("utf-8")))
 
+
+def hello()
+    print("Hello World")
+
         
