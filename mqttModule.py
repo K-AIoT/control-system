@@ -33,7 +33,7 @@ def tempSensorCallback(client, userdata, message):
     print("Received Temp Message: ", str(message.payload.decode("utf-8")))
 
 
-def hello()
+def hello():
     print("Hello World")
 
         
