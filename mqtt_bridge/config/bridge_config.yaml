@@ -1,0 +1,19 @@
+mqtt:
+        client:
+                protocol: 4
+        connection:
+                host: 172.29.69.158
+                port: 1883
+                keepalive: 60
+        private_path: robot
+       
+bridge:
+        #ping pong
+        - factory: mqtt_bridge.bridge:RosToMqttBridge
+          msg_type: std_msgs.msg:Bool
+          topic_from: /ping
+          topic_to: ~/ping
+        - factory: mqtt_bridge.bridge:MqttToRosBridge
+          msg_type: std_msgs.msg:Bool
+          topic_from: ~/ping
+          topic_to: /pong
