@@ -2,18 +2,27 @@ mqtt:
         client:
                 protocol: 4
         connection:
-                host: 172.29.69.158
+                host: 192.168.50.192
                 port: 1883
                 keepalive: 60
         private_path: robot
        
 bridge:
-        #ping pong
+        #Bool Data Communication
         - factory: mqtt_bridge.bridge:RosToMqttBridge
           msg_type: std_msgs.msg:Bool
-          topic_from: /ping
-          topic_to: ~/ping
+          topic_from: /robot/boolToMqtt
+          topic_to: ~/boolToMqtt
         - factory: mqtt_bridge.bridge:MqttToRosBridge
           msg_type: std_msgs.msg:Bool
-          topic_from: ~/ping
-          topic_to: /pong
+          topic_from: ~/boolToRos
+          topic_to: /robot/boolToRos
+        #Signed Int List Communication Using Custom msg Type
+        - factory: mqtt_bridge.bridge:RosToMqttBridge
+          msg_type: mqtt_bridge.msg:IntList 
+          topic_from: /robot/intListToMqtt
+          topic_to: ~/intListToMqtt
+        - factory: mqtt_bridge.bridge:MqttToRosBridge
+          msg_type: mqtt_bridge.msg:IntList
+          topic_from: ~/intListToRos
+          topic_to: /robot/intListToRos
