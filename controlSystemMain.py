@@ -3,13 +3,15 @@ import time
 from random import randrange
 
 mqttClient = mqttModule.makeClient("mqttClient")
-#mqttPublishTopics = ["actuators/servo"]
-
+mqttPublishTopics = ["actuators/servo", "robot/intListToRos", "resistors/potmeter"]
+inputData = [1, 2, 3]
 while True:
 
-    #inputData = randrange(30.0)
+    #inputData['data'] = not inputData['data']
+    for i in range(len(inputData)):
+        inputData[i] += 1
 
-    #for topic in mqttPublishTopics:
-        #mqttModule.mqttPublishData(mqttClient, topic, inputData)
+    for topic in mqttPublishTopics:
+        mqttModule.mqttPublishData(mqttClient, topic, inputData)
 
     time.sleep(1)
