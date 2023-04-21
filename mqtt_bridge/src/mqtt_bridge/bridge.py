@@ -6,7 +6,7 @@ import paho.mqtt.client as mqtt
 import rospy
 
 from .util import lookup_object, extract_values, populate_instance
-
+from mqtt_bridge.msg import IntList
 
 def create_bridge(factory: Union[str, "Bridge"], msg_type: Union[str, Type[rospy.Message]], topic_from: str,
                   topic_to: str, frequency: Optional[float] = None, **kwargs) -> "Bridge":
@@ -102,5 +102,15 @@ class MqttToRosBridge(Bridge):
             msg_dict = self._deserialize(mqtt_msg.payload)
         return populate_instance(msg_dict, self._msg_type())
 
+#class IntListRosToMqttBridge(RosToMqttBridge):
+#    def __init__(self):
+#        super(IntListRosToMqttBridge, self).__init__()
+#        self._msg_type = IntList
+
+
+#class IntListMqttToRosBridge(MqttToRosBridge):
+#    def __init__(self):
+#        super(IntListMqttToRosBridge, self).__init__()
+#        self._msg_type = IntList
 
 __all__ = ['create_bridge', 'Bridge', 'RosToMqttBridge', 'MqttToRosBridge']
