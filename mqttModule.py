@@ -62,19 +62,16 @@ def rosIntListCallback(client, userdata, message):
 
 # Publishes data to MQTT topics and distinguishes between normal topics and those for communication with the robot. 
 def mqttPublishData(client, topic, data):
-    if topic.startswith("robot/"):  # Checks first if the topic will be used to communicate with the robot and then if its format is compatible with the ROS topic, 
-                                    # i.e. if it's a dictionary.
-        if type(data) is dict:
+        if type(data) is not dict:
+            data = {'data': data} # Converts to dictionary.
+            
+        if topic.startswith("robot/"):  # Checks first if the topic will be used to communicate with the robot and then if its format is compatible with the ROS topic, 
+                                        # i.e. if it's a dictionary.
             encodedData = msgpack.packb(data)   # Encodes the data.
             client.publish(topic, payload=encodedData, qos=1, retain=False) 
         else:
-            dataAsDict = {'data': data} # Converts to dictionary.
-            encodedData = msgpack.packb(dataAsDict) # Encodes the data.
-            client.publish(topic, payload=encodedData, qos=1, retain=False)      
-    else:
-        client.publish(topic, payload=json.dumps(data), qos=1, retain=False) # Will cause error if data isn't a string, bytearray, int, float or None. So fixed by 
-                                                                             # encoding payload using JSON. 
-
+            client.publish(topic, payload=json.dumps(data), qos=1, retain=False) # Will cause error if data isn't a string, bytearray, int, float or None. So fixed by 
+                                                                                 # encoding payload using JSON. 
 
 
         

@@ -8,6 +8,7 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include "DHT.h"
+#include <ArduinoJson.h>
 
 // Defining which DHT sensor type is used
 #define DHTTYPE DHT22  // DHT 22 
@@ -66,7 +67,9 @@ void callback(char* topic, byte* message, unsigned int length) {
   Serial.print("Message arrived on topic: ");
   Serial.print(topic);
   Serial.print(". Message: ");
-  String msg;
+
+  JsonVariant parsed = deserializeJson(message); //Decodes json formatting data received and places in JsonVariant object called 'parsed'.
+  String msg = (parsed["data"].as<String>();  //Accesses the value of the decoded message associated with the field 'data' and interprets it as a string before storing it in the variable msg. 
 
   for (int i = 0; i < length; i++) {
     Serial.print((char)message[i]);
