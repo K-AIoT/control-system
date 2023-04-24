@@ -2,7 +2,7 @@ import paho.mqtt.client as mqtt
 import msgpack
 import json
 
-mqttBrokerIp = "192.168.50.192"
+mqttBrokerIp = "172.16.1.16"
 
 mqttClientSubscriptions = ["robot/intListToMqtt", "sensors/temperature", "sensors/humidity", "sensors/temperature2", "resistors/potmeter"] #Make empty list here, and add function to add subscriptions that can be called from main file.
 

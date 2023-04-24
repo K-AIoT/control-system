@@ -64,11 +64,21 @@ void setup_wifi() {
 // Change the function below to add logic to your program, so when a device publishes a message to a topic that
 // your ESP8266 is subscribed you can actually do something
 void callback(char* topic, byte* message, unsigned int length) {
+  
+  DynamicJsonDocument parsed(256);
+  
   Serial.print("Message arrived on topic: ");
   Serial.print(topic);
   Serial.print(". Message: ");
 
-  JsonVariant parsed = deserializeJson(message); //Decodes json formatting data received and places in JsonVariant object called 'parsed'.
+  DeserializationError error = deserializeJson(parsed, message, length);
+  if (error) {
+    Serial.print(F("deserializeJson() failed: "));
+    Serial.println(error.c_str());
+    return;
+  }
+
+  // JsonVariant parsed = deserializeJson(message); //Decodes json formatting data received and places in JsonVariant object called 'parsed'.
   String msg = (parsed["data"].as<String>();  //Accesses the value of the decoded message associated with the field 'data' and interprets it as a string before storing it in the variable msg. 
 
   for (int i = 0; i < length; i++) {
