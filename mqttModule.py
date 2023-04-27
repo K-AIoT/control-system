@@ -2,9 +2,9 @@ import paho.mqtt.client as mqtt
 import msgpack
 import json
 
-mqttBrokerIp = "172.16.1.16"
+mqttBrokerIp = "192.168.137.211"
 
-mqttClientSubscriptions = ["robot/intListToMqtt", "sensors/temperature", "sensors/humidity", "sensors/temperature2", "resistors/potmeter"] #Make empty list here, and add function to add subscriptions that can be called from main file.
+mqttClientSubscriptions = ["robot/intListToMqtt", "robot/boolToMqtt", "sensors/temperature", "sensors/humidity", "sensors/temperature2", "resistors/potmeter"] #Make empty list here, and add function to add subscriptions that can be called from main file.
 
 # Function that creates an MQTT client, defines its callback functions and connects it to the broker via its IP address.
 def makeClient(clientName):
@@ -15,7 +15,8 @@ def makeClient(clientName):
     client.message_callback_add("sensors/temperature2", sensorsTemperature2Callback)
     client.message_callback_add("sensors/humidity", sensorsHumidityCallback)
     client.message_callback_add("resistors/potmeter", resistorsPotmeterCallback)
-    client.message_callback_add("robot/intListToMqtt", rosIntListCallback)
+    client.message_callback_add("robot/intListToMqtt", rosCallback)
+    client.message_callback_add("robot/boolToMqtt", rosCallback)
     client.on_disconnect = on_disconnect
     client.connect(mqttBrokerIp)
     client.loop_start()                                                                                         
@@ -55,7 +56,7 @@ def resistorsPotmeterCallback(client, userdata, message):
     client.publish("actuators/servo", message.payload)  #Publishes messages received directly to actuators/servo topic
 
 # Message callback function, specifically to handle any messages on topics related to ROS.
-def rosIntListCallback(client, userdata, message):
+def rosCallback(client, userdata, message):
     print("Received ROS Message: ", str(msgpack.unpackb(message.payload, raw=False)))   # Decodes MessagePack-encoded string into Python dictionary. 
                                                                                         # raw=False indicates decode string values as Unicode strings not binary 
                                                                                         # strings.
