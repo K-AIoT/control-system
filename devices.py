@@ -2,12 +2,12 @@
 import paho.mqtt.client as mqtt
 import asyncio
 from asyncua import Client, Node, ua
-from typing import List, Optional
+from typing import List, Optional, Dict
 from uuid import UUID
 
 
 class MqttOpcuaBridge:
-    def __init__(self, opcuaClient: Client, mqttClient: mqtt.Client):
+    def __init__(self, opcuaClient: Optional[Client] = None, mqttClient: Optional[mqtt.Client] = None):
         self._mqttClient = mqttClient
         self._opcuaClient = opcuaClient
 
@@ -24,60 +24,63 @@ class MqttOpcuaBridge:
         self._mqttClient = newClient
 
 
-class Node:
-    def __init__(self, uuidStrings: List[str], bridge: MqttOpcuaBridge):
+class Device:
+    # def __init__(self, uuidStrings: Optional[List[str]] = None, bridge: Optional[MqttOpcuaBridge] = None, mqttSubs: Optional[List[str]] = None):
+    def __init__(self, bridge: Optional[MqttOpcuaBridge] = None, pubSubPairs: Optional[Dict[str, str]] = None):
         self._bridge = bridge
-        self._uuidStrings = uuidStrings
-        self._opcuaNodeIds = asyncio.create_task(self.setOpcuaNodeIds())
+        self._pubSubPairs = pubSubPairs
+        self.setPubSubPairs(self._pubSubPairs)
+        # self._opcuaNodeIds = asyncio.create_task(self.setOpcuaNodeIds())
 
-    async def setOpcuaNodeIds(self):
-        nodeDict = {}
-        for uuid in self._uuidStrings:
-            nodeId = ua.NodeId(UUID(uuid), 2, ua.NodeIdType.Guid)
-            node = self._bridge.getOpcuaClient().get_node(nodeId)
-            browseName = await node.read_browse_name()
-            nodeDict[browseName.to_string()] = nodeId
-        return nodeDict
+    # def createCallback():
 
-    def getOpcuaNodeIds(self):
-        return self._opcuaNodeIds
 
-# class Sensor(Node):
 
-# # Class Attributes/Methods:
-#     def __init__(self, opcuaClient, nodeIds, mqttClient, subscriptions): # Contains instance Attributes/Methods:
-#         super().__init__(opcuaClient, nodeIds, mqttClient)
-#         self._reading = None
-#         self._mqttSubscriptions = subscriptions
-#         self.subscribeAll()
+    # Setter Functions:
+    def setPubSubPairs(self, newPubSubPairs: Optional[Dict[str, str]] = None):
+           
+        tempDict = {}
+        if newPubSubPairs != None:
+        # for pub, sub in self._pubSubPairs.items():
+            for pub, sub in newPubSubPairs.items():    
+                if "/" in pub: # If the MQTT topic is the publisher
+                    # Subscribe to MQTT topic and add a callback function for it
+                    self._bridge.getMqttClient().message_callback_add(pub, self.deviceCallback)
+                    self._bridge.getMqttClient().subscribe(pub)
+                    # Convert the OPC UA UUID string to a node ID
+                    nodeId = ua.NodeId(UUID(sub), 2, ua.NodeIdType.Guid)
+                    node = self._bridge.getOpcuaClient().get_node(nodeId)
+                    nodeTuple = (nodeId, node)
+                    tempDict[nodeTuple] = pub
+                elif "/" in sub: # If the MQTT topic is the subscriber
+                    # Convert the OPC UA UUID string to a node ID
+                    nodeId = ua.NodeId(UUID(pub), 2, ua.NodeIdType.Guid)
+                    node = self._bridge.getOpcuaClient().get_node(nodeId)
+                    nodeTuple = (nodeId, node)
+                    tempDict[sub] = nodeTuple
+        self._pubSubPairs = tempDict
 
-#     def subscribeAll(self):
-#         for topic in self._mqttSubscriptions:
-#             self._mqttClient.message_callback_add(topic, self.sensorCallback)
+    def setBridge(self, newBridge):
+        self._bridge = newBridge
 
-#         for topic in self._mqttSubscriptions:
-#             self._mqttClient.subscribe(topic)
+    # Getter Functions:
+    def getPubSubPairs(self):
+        return self._pubSubPairs
 
-#     # Setter Functions:
-#     async def setReading(self, newReading):
-#         self._reading = newReading
+    def getBridge():
+        return self._bridge
 
-#     async def setMqttSubscriptions(self, subscriptions):
-#         self._mqttSubscriptions = subscriptions
+    # Callback Function:
+    def deviceCallback(self, client, userdata, message):
+        print(f'Received Message: {str(message.payload.decode("utf-8"))} on topic {message.topic}')
+        
+        # asyncio.run(self.setReading(message.payload.decode("utf-8")))
+        # match message.topic:
+        #     case self._pubSubPairs:
 
-#     # Getter Functions:
-#     async def getReading(self):
-#         return self._reading
+        # asyncio.run(self._bridge.getOpcuaClient().write_values(self._opcuaNodes[0], message.payload.decode("utf-8")))
 
-#     async def getMqttSubscriptions(self):
-#         return self._mqttSubscriptions
 
-#     # Callback Function:
-#     def sensorCallback(self, client, userdata, message):
-#         print("Received Sensor Message: ", str(message.payload.decode("utf-8")))
-#         asyncio.run(self.setReading(message.payload.decode("utf-8")))
-#         asyncio.run(self._opcuaClient.write_values(self._opcuaNodes[0], message.payload.decode("utf-8")))
-
-#     # async def updateAttributeVal(self, subscriptions):
-#     #     attributeVal = await asyncio.wait_for(toMonitor, None) # Wait for variable_name to change with no timeout (None)
-#     #     node.write_value(attributeVal)
+    # async def updateAttributeVal(self, subscriptions):
+    #     attributeVal = await asyncio.wait_for(toMonitor, None) # Wait for variable_name to change with no timeout (None)
+    #     node.write_value(attributeVal)
