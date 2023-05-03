@@ -15,7 +15,7 @@ async def main():
     async with Client(url=opcuaServerUrl) as client:
 
         myBridge = devices.MqttOpcuaBridge(client, mqttClient)
-        myNode = devices.Device(myBridge, {"sensors/humidity":"3dbdca09-4b5c-b9ac-efd0-3184cdcceec3","7347f3a9-455f-a8e5-f0b6-c8d2520eec5f": "sensors/temperature", "d1581787-f061-a231-fc00-569b624f14b6": "sensors/temperature2"})
+        myNode = devices.Device(myBridge, {"3dbdca09-4b5c-b9ac-efd0-3184cdcceec3" : "sensors/humidity", "sensors/temperature" : "7347f3a9-455f-a8e5-f0b6-c8d2520eec5f", "sensors/temperature2" : "d1581787-f061-a231-fc00-569b624f14b6"})
         
         while True:
             await asyncio.sleep(1)
