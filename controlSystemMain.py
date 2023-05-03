@@ -1,44 +1,48 @@
 import mqttModule
-import devices
+import msgpack
 import time
-from geometry_msgs.msg import Twist
 from random import randrange
 
 mqttClient = mqttModule.makeClient("mqttClient")
-mqttPublishTopics = ["actuators/servo", "robot/intListToRos", "resistors/potmeter"]
-# inputData = [1, 2, 3]
+mqttPublishTopics = ["robot/fromBuzzer", "robot/ToMoveBaseSimple/Goal", "actuators/servo", "robot/intListToRos", "resistors/potmeter"]
+# inputData = [1, 2, 3] # For intList test
+# inputData = {'data': False} # For Bool test
+# inputData = 
+inputData = {'linear' : {'x': 0.2, 'y' : 0.0, 'z' : 0.0}, 'angular' : {'x': 0.0, 'y' : 0.0, 'z' : 0.0}} #For twist message test
 
-twist_msg = Twist()
-twist_msg.linear.x = 0.2
-twist_msg.linear.y = 0.0
-twist_msg.linear.z = 0.0
-twist_msg.angular.x = 0.0
-twist_msg.angular.y = 0.0
-twist_msg.angular.z = 0.0
 
 while True:
 
-    #inputData['data'] = not inputData['data']
+#Used with robot/boolToRos test:
+    # inputData['data'] = not inputData['data']
 
+    # mqttModule.mqttPublishData(mqttClient, "robot/toBuzzer" , inputData)
+
+    # time.sleep(1)
+
+#Used with robot/intListToRos test:
     # for i in range(len(inputData)):
     #     inputData[i] += 1
 
     # for topic in mqttPublishTopics:
     #     mqttModule.mqttPublishData(mqttClient, topic, inputData)
 
+#Used with robot/cmd_vel test:
     # for key in inputData['linear']:
     #     inputData['linear'][key] = -inputData['linear'][key]
 
+    # mqttModule.mqttPublishData(mqttClient, "robot/toVelRaw", inputData)
 
-    twist_data = {
-        'linear': {'x': twist_msg.linear.x, 'y': twist_msg.linear.y, 'z': twist_msg.linear.z},
-        'angular': {'x': twist_msg.angular.x, 'y': twist_msg.angular.y, 'z': twist_msg.angular.z}}
+    # time.sleep(0.01)
+
+#Used with robot/ToMoveBaseSimple/Goal test:   
     
-    packed_twist_data = msgpack.packb(twist_data)
+    poseStamped = {'header': {'seq': 0, 'stamp': {'secs': 1683119373, 'nsecs': 994051246}, 'frame_id': 'map'}, 'pose': {'position': {'x': -1.399324893951416, 'y': 0.36991798877716064, 'z': 0.0}, 'orientation': {'x': 0.0, 'y': 0.0, 'z': 0.9893189277112782, 'w': 0.1457671405777269}}}
 
-    mqttClient.publish("robot/cmd_vel", packed_twist_data)
+    packedPoseStamped = msgpack.packb(poseStamped)
 
-    # mqttModule.mqttPublishData(mqttClient, "robot/toCmd_vel", inputData)
-    
+    mqttClient.publish("robot/toGoal", packedPoseStamped)  
 
-    time.sleep(0.005)
+    time.sleep(6)
+
+# header: seq: 0 stamp: secs: 0 nsecs: 0 frame_id: world
