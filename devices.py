@@ -1,46 +1,83 @@
-#devices.py
-
+# devices.py
+import paho.mqtt.client as mqtt
 import asyncio
+from asyncua import Client, Node, ua
+from typing import List, Optional
+from uuid import UUID
 
 
-class OpcuaNode:
+class MqttOpcuaBridge:
+    def __init__(self, opcuaClient: Client, mqttClient: mqtt.Client):
+        self._mqttClient = mqttClient
+        self._opcuaClient = opcuaClient
 
-#Class Attributes/Methods:
-    def __init__(self, nodeId):
-        #Instance Attributes/Methods:
-        self.__opcuaNodeId = nodeId
-        __opcuaNodeId = None
+    def getOpcuaClient(self):
+        return self._opcuaClient
 
-    async def setOpcuaNodeId(self, nid):
-        self.__opcuaNodeId = nid
+    def getMqttClient(self):
+        return self._mqttClient
 
-    async def getOpcuaNodeId(self):
-        return self.__opcuaNodeId
+    def setOpcuaClient(self, newClient):
+        self._opcuaClient = newClient
 
-
-class Sensor(OpcuaNode):
-
-#Class Attributes/Methods:
-    def __init__(self, nodeId): #Contains instance Attributes/Methods:
-        super().__init__(nodeId)
-        __reading = None
-
-    async def setReading(self, newReading):
-        self.__reading = newReading
-
-    async def getReading(self):
-        return self.__reading
+    def setMqttClient(self, newClient):
+        self._mqttClient = newClient
 
 
-class Actuator(OpcuaNode):
+class Node:
+    def __init__(self, uuidStrings: List[str], bridge: MqttOpcuaBridge):
+        self._bridge = bridge
+        self._uuidStrings = uuidStrings
+        self._opcuaNodeIds = asyncio.create_task(self.setOpcuaNodeIds())
 
-#Class Attributes/Methods:
-    def __init__(self, nodeId): #Contains instance Attributes/Methods:
-        super().__init__(nodeId)
-        __actuatorInput = None
+    async def setOpcuaNodeIds(self):
+        nodeDict = {}
+        for uuid in self._uuidStrings:
+            nodeId = ua.NodeId(UUID(uuid), 2, ua.NodeIdType.Guid)
+            node = self._bridge.getOpcuaClient().get_node(nodeId)
+            browseName = await node.read_browse_name()
+            nodeDict[browseName.to_string()] = nodeId
+        return nodeDict
 
-    async def setInput(self, newInput):
-        self.__actuatorInput = newInput
+    def getOpcuaNodeIds(self):
+        return self._opcuaNodeIds
 
-    async def getInput(self):
-        return self.__actuatorInput
+# class Sensor(Node):
+
+# # Class Attributes/Methods:
+#     def __init__(self, opcuaClient, nodeIds, mqttClient, subscriptions): # Contains instance Attributes/Methods:
+#         super().__init__(opcuaClient, nodeIds, mqttClient)
+#         self._reading = None
+#         self._mqttSubscriptions = subscriptions
+#         self.subscribeAll()
+
+#     def subscribeAll(self):
+#         for topic in self._mqttSubscriptions:
+#             self._mqttClient.message_callback_add(topic, self.sensorCallback)
+
+#         for topic in self._mqttSubscriptions:
+#             self._mqttClient.subscribe(topic)
+
+#     # Setter Functions:
+#     async def setReading(self, newReading):
+#         self._reading = newReading
+
+#     async def setMqttSubscriptions(self, subscriptions):
+#         self._mqttSubscriptions = subscriptions
+
+#     # Getter Functions:
+#     async def getReading(self):
+#         return self._reading
+
+#     async def getMqttSubscriptions(self):
+#         return self._mqttSubscriptions
+
+#     # Callback Function:
+#     def sensorCallback(self, client, userdata, message):
+#         print("Received Sensor Message: ", str(message.payload.decode("utf-8")))
+#         asyncio.run(self.setReading(message.payload.decode("utf-8")))
+#         asyncio.run(self._opcuaClient.write_values(self._opcuaNodes[0], message.payload.decode("utf-8")))
+
+#     # async def updateAttributeVal(self, subscriptions):
+#     #     attributeVal = await asyncio.wait_for(toMonitor, None) # Wait for variable_name to change with no timeout (None)
+#     #     node.write_value(attributeVal)
