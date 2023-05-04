@@ -5,8 +5,8 @@ import msgpack
 import json
 
 # mqttBrokerIp = "192.168.50.74" #local home
-mqttBrokerIp = "172.29.76.226" #local eduroam
-# mqttBrokerIp = "192.168.1.22" #raspberry pi
+# mqttBrokerIp = "172.29.76.226" #local eduroam
+mqttBrokerIp = "192.168.1.22" #raspberry pi
 
 mqttClientSubscriptions = ["robot/fromGoal", "robot/toCmd_vel", "robot/intListToMqtt", "robot/boolToMqtt", "sensors/temperature", "sensors/humidity", "sensors/temperature2", "resistors/potmeter", "robot/fromCmd_vel"] #Make empty list here, and add function to add subscriptions that can be called from main file.
 
