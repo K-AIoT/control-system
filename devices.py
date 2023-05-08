@@ -1,10 +1,11 @@
 # devices.py
+# from asyncua.common.node import Node
 import paho.mqtt.client as mqtt
+import mqttModule
 import asyncio
 from asyncua import Client, Node, ua
-from typing import List, Optional, Dict, Callable, Tuple
+from typing import List, Optional, Dict, Tuple
 from uuid import UUID
-from asyncua.ua import VariantType
 
 
 class MqttOpcuaBridge:
@@ -44,7 +45,7 @@ class Device:
         if newPubSubPairs != None:
             for pub, sub in newPubSubPairs:    
                 if "/" in pub: # If the MQTT topic is the publisher subscribe to MQTT topic and add a callback function for it
-                    self._bridge.getMqttClient().message_callback_add(pub, self.callback)
+                    self._bridge.getMqttClient().message_callback_add(pub, self.mqttCallback)
                     self._bridge.getMqttClient().subscribe(pub)
                     # Convert the OPC UA UUID string to a node ID
                     nodeId = ua.NodeId(UUID(sub), 2, ua.NodeIdType.Guid)
@@ -61,7 +62,8 @@ class Device:
                 elif "/" in sub: # If the MQTT topic is the subscriber convert the OPC UA UUID string to a node ID
                     nodeId = ua.NodeId(UUID(pub), 2, ua.NodeIdType.Guid)
                     node = self._bridge.getOpcuaClient().get_node(nodeId)
-                  
+                    subscription = await self._bridge.getOpcuaClient().create_subscription(period=0, handler=opcuaCallback(self), publishing=True)
+                    await subscription.subscribe_data_change(node)
                     if node in tempDict:
                         if sub not in tempDict[node]:
                             tempDict[node].append(sub)
@@ -91,7 +93,7 @@ class Device:
 
     # MQTT Callback Function:
 
-    def callback(self, client, userdata, message):
+    def mqttCallback(self, client, userdata, message):
         try:
             print(f'Received Message: {str(message.payload.decode("utf-8"))} on topic {message.topic}')               
             opcuaNodes = self._pubSubPairs[message.topic]
@@ -117,4 +119,20 @@ class Device:
             print("Error: Could not convert payload to appropriate type")
             return
             
+# OPC UA Callback Handler:
     
+class opcuaCallback:
+
+    def __init__(self, device : Device):
+        self._device = device
+
+    async def datachange_notification(self, node: Node, val, data: ua.DataChangeNotification):
+        nodeName = await node.read_browse_name()
+        print(f"New value from OPC UA server on node {nodeName.Name}: {val}")
+        for mqttTopic in self._device.getPubSubPairs()[node]:
+            mqttModule.mqttPublishData(self._device.getBridge().getMqttClient(), mqttTopic, val)
+        
+    async def event_notification(self, event: ua.EventNotificationList):
+        print(f"Event: {event}")
+       
+        

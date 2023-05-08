@@ -19,8 +19,7 @@ async def main():
             ("sensors/temperature", "3dbdca09-4b5c-b9ac-efd0-3184cdcceec3"),
             ("7347f3a9-455f-a8e5-f0b6-c8d2520eec5f", "sensors/temperatureThreshold"),
             ("sensors/humidity", "46d6d34e-622b-777a-744e-082d78f6e4c4"),
-            ("18b95a2b-2c42-2c19-e488-56e7bcd0f2d2", "sensors/humidityThreshold"),
-            ("sensors/temperatureThreshold","7347f3a9-455f-a8e5-f0b6-c8d2520eec5f")
+            ("18b95a2b-2c42-2c19-e488-56e7bcd0f2d2", "sensors/humidityThreshold") 
         ])
 
         while True:

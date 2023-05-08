@@ -5,8 +5,8 @@ import msgpack
 import json
 
 # mqttBrokerIp = "192.168.50.74" #local home
-mqttBrokerIp = "172.29.76.226" #local eduroam
-# mqttBrokerIp = "192.168.1.22" #raspberry pi
+# mqttBrokerIp = "172.29.76.226" #local eduroam
+mqttBrokerIp = "192.168.1.22" #raspberry pi
 
 # mqttClientSubscriptions = ["robot/fromBuzzer"] 
 mqttClientSubscriptions = ["sensors/temperatureThreshold", "robot/fromGoal", "robot/toCmd_vel", "robot/intListToMqtt", "robot/boolToMqtt", "sensors/temperature", "sensors/humidity", "sensors/temperature2", "resistors/potmeter", "robot/fromCmd_vel"] #Make empty list here, and add function to add subscriptions that can be called from main file.
@@ -29,8 +29,6 @@ def makeClient(clientName):
 # Message callback function, to handle any messages on subscribed topics that don't have a specific callback function.
 def on_message(client, userdata, message):
     pass
-    #print("Received ROS Message: ", str(msgpack.unpackb(message.payload, raw=False)))
-    # print("Unrecognised Message Type Received: ", print(message.payload))
 
 # Callback function that executes when client receives CONNACK from broker in response to connect request.
 def on_connect(client, userdata, flags, rc):
