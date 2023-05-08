@@ -4,7 +4,7 @@ import asyncio
 from asyncua import Client, Node, ua
 from typing import List, Optional, Dict, Callable, Tuple
 from uuid import UUID
-import threading
+from asyncua.ua import VariantType
 
 
 class MqttOpcuaBridge:
@@ -30,10 +30,15 @@ class Device:
     def __init__(self, bridge: Optional[MqttOpcuaBridge] = None, pubSubPairs: Optional[List[Tuple[str, str]]] = None):
         self._bridge = bridge
         self._pubSubPairs = pubSubPairs
-        self.setPubSubPairs(self._pubSubPairs)
-        
+
+        self._loop = asyncio.get_event_loop()
+        self._loop.create_task(self.asyncInit())
+    
+    async def asyncInit(self):
+        await self.setPubSubPairs(self._pubSubPairs)     
+
     # Setter Functions:
-    def setPubSubPairs(self, newPubSubPairs: Optional[List[Tuple[str, str]]] = None):       
+    async def setPubSubPairs(self, newPubSubPairs: Optional[List[Tuple[str, str]]] = None):       
         tempDict = {}
         formattedTempDict = {}
         if newPubSubPairs != None:
@@ -44,12 +49,14 @@ class Device:
                     # Convert the OPC UA UUID string to a node ID
                     nodeId = ua.NodeId(UUID(sub), 2, ua.NodeIdType.Guid)
                     node = self._bridge.getOpcuaClient().get_node(nodeId)
-
+                    nodeName = (await node.read_browse_name()).Name                  
+                    variantType = await node.read_data_type_as_variant_type()
+                    nodeDict = {"node": node, "name": nodeName, "variantType": variantType}
                     if pub in tempDict:
                         if node not in tempDict[pub]:
-                            tempDict[pub].append(node) 
+                            tempDict[pub].append(nodeDict)
                     else:
-                        tempDict[pub] = [node]
+                        tempDict[pub] = [nodeDict]
 
                 elif "/" in sub: # If the MQTT topic is the subscriber convert the OPC UA UUID string to a node ID
                     nodeId = ua.NodeId(UUID(pub), 2, ua.NodeIdType.Guid)
@@ -82,17 +89,32 @@ class Device:
     def getBridge(self):
         return self._bridge
 
-    def callback(self, client, userdata, message):
-        print(f'Received Message: {str(message.payload.decode("utf-8"))} on topic {message.topic}')               
-        opcuaNodes = self._pubSubPairs[message.topic]
-        for node in opcuaNodes:
-            print(f'Publishing message to OPC UA node: {node}')   
-            payloadValue = float(message.payload)
-            payloadValueVariant = ua.DataValue(ua.Variant(payloadValue, ua.VariantType.Float))
-            
-            asyncio.run(node.write_value(payloadValueVariant))
+    # MQTT Callback Function:
 
+    def callback(self, client, userdata, message):
+        try:
+            print(f'Received Message: {str(message.payload.decode("utf-8"))} on topic {message.topic}')               
+            opcuaNodes = self._pubSubPairs[message.topic]
             
-    # async def updateAttributeVal(self, subscriptions):
-    #     attributeVal = await asyncio.wait_for(toMonitor, None) # Wait for variable_name to change with no timeout (None)
-    #     node.write_value(attributeVal)
+            for node in opcuaNodes:
+
+                print(f'Publishing message to OPC UA node: {node["name"]}')   
+                
+                match node["variantType"].name:
+                    case "Float":
+                        payloadValue = float(message.payload) 
+                    case "String":
+                        payloadValue = str(message.payload)
+                    case "Boolean":
+                        payloadValue = bool(message.payload)
+                    case _:
+                        print("Node is of an unknown data type so cannot be handled.")
+                        return 
+                    
+                variantFormattedPayload = ua.DataValue(ua.Variant(payloadValue, node["variantType"]))
+                self._loop.create_task(node["node"].write_value(variantFormattedPayload))
+        except ValueError:
+            print("Error: Could not convert payload to appropriate type")
+            return
+            
+    
