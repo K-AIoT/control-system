@@ -1,11 +1,13 @@
 # devices.py
-# from asyncua.common.node import Node
+
 import paho.mqtt.client as mqtt
 import mqttModule
 import asyncio
 from asyncua import Client, Node, ua
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Dict, Tuple, Any
 from uuid import UUID
+import msgpack
+import re
 
 
 class MqttOpcuaBridge:
@@ -35,7 +37,10 @@ class Device:
         self._loop = asyncio.get_event_loop()
         self._loop.create_task(self.asyncInit())
     
-    async def asyncInit(self):
+    # Make __del__(self):
+        #unsubscribes OPC UA node
+
+    async def asyncInit(self): #POSSIBLY DELETE AND CALL SETPUBSUBPAIRS IN LOOP.CREATE_TASK IN INIT
         await self.setPubSubPairs(self._pubSubPairs)     
 
     # Setter Functions:
@@ -62,7 +67,7 @@ class Device:
                 elif "/" in sub: # If the MQTT topic is the subscriber convert the OPC UA UUID string to a node ID
                     nodeId = ua.NodeId(UUID(pub), 2, ua.NodeIdType.Guid)
                     node = self._bridge.getOpcuaClient().get_node(nodeId)
-                    subscription = await self._bridge.getOpcuaClient().create_subscription(period=0, handler=opcuaCallback(self), publishing=True)
+                    subscription = await self._bridge.getOpcuaClient().create_subscription(period=0, handler=OpcuaCallback(self), publishing=True)
                     await subscription.subscribe_data_change(node)
                     if node in tempDict:
                         if sub not in tempDict[node]:
@@ -91,6 +96,19 @@ class Device:
     def getBridge(self):
         return self._bridge
 
+
+    def typecastForNode(self, node, payload):
+        match node["variantType"].name:
+            case "Float":
+                return float(payload) 
+            case "String":
+                return str(payload)
+            case "Boolean":
+                return bool(payload)
+            case _:
+                print("Node is of an unknown data type so cannot be handled.")
+                return 
+
     # MQTT Callback Function:
 
     def mqttCallback(self, client, userdata, message):
@@ -101,27 +119,19 @@ class Device:
             for node in opcuaNodes:
 
                 print(f'Publishing message to OPC UA node: {node["name"]}')   
-                
-                match node["variantType"].name:
-                    case "Float":
-                        payloadValue = float(message.payload) 
-                    case "String":
-                        payloadValue = str(message.payload)
-                    case "Boolean":
-                        payloadValue = bool(message.payload)
-                    case _:
-                        print("Node is of an unknown data type so cannot be handled.")
-                        return 
-                    
+    
+                payloadValue = self.typecastForNode(node, message.payload)
                 variantFormattedPayload = ua.DataValue(ua.Variant(payloadValue, node["variantType"]))
+                
                 self._loop.create_task(node["node"].write_value(variantFormattedPayload))
+       
         except ValueError:
             print("Error: Could not convert payload to appropriate type")
             return
             
 # OPC UA Callback Handler:
     
-class opcuaCallback:
+class OpcuaCallback:
 
     def __init__(self, device : Device):
         self._device = device
@@ -135,4 +145,100 @@ class opcuaCallback:
     async def event_notification(self, event: ua.EventNotificationList):
         print(f"Event: {event}")
        
+class Robot(Device):
+
+    def __init__(self, bridge: Optional[MqttOpcuaBridge] = None, pubSubPairs: Optional[List[Tuple[str, str]]] = None):
+        super().__init__(bridge, pubSubPairs)
+
+    def mqttCallback(self, client, userdata, message):
+        try:    
+            opcuaNodes = self._pubSubPairs[message.topic] #tuple
+            rosMsgDict = msgpack.unpackb(message.payload, raw=False) #dict
+
+            # print(f'Received Message: {str(rosMsgDict)} on topic {message.topic}')
+            print(f'Received ROS message on topic {message.topic}:')  
+            for node in opcuaNodes:
+
+                # keyPath = [x.lower() for x in re.split(r'(?=[A-Z])', node["name"])]
+                keyPath = [x.lower() for x in re.split(r'(?=[A-Z])', "status_listStatus")]
+                                       
+                for searchTerm in keyPath: 
+                    rosMsgDict = self.getRosDictionaryValue(rosMsgDict, searchTerm)
+                    key, hit = searchTerm, rosMsgDict
+  
+                print(f'Message: {key} = {hit}\nPublishing to OPC UA node: {node["name"]}')
+
+                payloadValue = super().typecastForNode(node, hit)                
+                variantFormattedPayload = ua.DataValue(ua.Variant(payloadValue, node["variantType"]))
+                self._loop.create_task(node["node"].write_value(variantFormattedPayload))
+
+        except ValueError:
+            print("Error: Could not convert payload to appropriate type")
+            return
+
+    def getRosDictionaryValue(self, msgToSearch, searchKey: str):
+                
+        if (isinstance(msgToSearch, list) and all(isinstance(item, dict) for item in msgToSearch)):
+            for dictionary in msgToSearch:
+                for key, entry in dictionary.items():          
+                    if(key == searchKey):
+                        return entry
+                    if isinstance(entry, dict) or (isinstance(entry, list) and all(isinstance(item, dict) for item in entry)):
+                        self.getRosDictionaryValue(entry, searchKey)
         
+        elif isinstance(msgToSearch, dict):
+            for key, entry in msgToSearch.items():         
+                if(key == searchKey):
+                    return entry
+                if isinstance(entry, dict) or (isinstance(entry, list) and all(isinstance(item, dict) for item in entry)):
+                    self.getRosDictionaryValue(entry, searchKey)
+
+# goalStatusArray = {
+#     'header': {
+#         'seq': 0,
+#         'stamp': {
+#             'secs': 0,
+#             'nsecs': 0
+#         },
+#         'frame_id': ''
+#     },
+#     'status_list': [
+#         { 'goal_id': { 'id': '', 'stamp': { 'secs': 0, 'nsecs': 0 } }, 
+#           'status': 0, 
+#           'text': '' }
+#     ]
+# }
+
+# poseStamped = {
+#     'header': {
+#         'seq': 0,
+#         'stamp': {
+#         'secs': 0,
+#         'nsecs': 0
+#         },
+#         'frame_id': ''
+#     },
+#     'pose': {
+#         'position': {
+#         'x': 0.0,
+#         'y': 0.0,
+#         'z': 0.0
+#         },
+#         'orientation': {
+#         'x': 0.0,
+#         'y': 0.0,
+#         'z': 0.0,
+#         'w': 0.0
+#         }
+#     }
+#     }
+
+
+
+
+
+
+
+
+
+

@@ -7,20 +7,29 @@ import json
 # mqttBrokerIp = "192.168.50.74" #local home
 # mqttBrokerIp = "172.29.76.226" #local eduroam
 mqttBrokerIp = "192.168.1.22" #raspberry pi
+# mqttBrokerIp = "172.29.69.158" #personal machine eduroam
 
-# mqttClientSubscriptions = ["robot/fromBuzzer"] 
-mqttClientSubscriptions = ["sensors/temperatureThreshold", "robot/fromGoal", "robot/toCmd_vel", "robot/intListToMqtt", "robot/boolToMqtt", "sensors/temperature", "sensors/humidity", "sensors/temperature2", "resistors/potmeter", "robot/fromCmd_vel"] #Make empty list here, and add function to add subscriptions that can be called from main file.
+mqttClientSubscriptions = [
+    "robot/fromBuzzer",
+    "robot/twistToMqtt", 
+    "robot/goalStatusArrayToMqtt",  
+    "robot/fromGoal", 
+    "robot/toCmd_vel", 
+    "robot/fromCmd_vel",
+    "robot/intListToMqtt", 
+    "robot/boolToMqtt", 
+    "sensors/temperature", 
+    "sensors/humidity", 
+    "sensors/temperatureThreshold",
+    "sensors/temperature2", 
+    "resistors/potmeter"
+    ] #Make empty list here, and add function to add subscriptions that can be called from main file.
 
 # Function that creates an MQTT client, defines its callback functions and connects it to the broker via its IP address.
 def makeClient(clientName):
     client = mqtt.Client(client_id=clientName, protocol=mqtt.MQTTv311, transport="tcp")
     client.on_connect = on_connect
     client.on_message = on_message
-    # client.message_callback_add("resistors/potmeter", resistorsPotmeterCallback)
-    client.message_callback_add("robot/intListToMqtt", rosCallback)
-    client.message_callback_add("robot/boolToMqtt", rosCallback)
-    client.message_callback_add("robot/fromGoal", rosCallback)
-    client.message_callback_add("robot/fromBuzzer", rosCallback)
     client.on_disconnect = on_disconnect
     client.connect(mqttBrokerIp)
     client.loop_start()                                                                                         
@@ -28,8 +37,8 @@ def makeClient(clientName):
 
 # Message callback function, to handle any messages on subscribed topics that don't have a specific callback function.
 def on_message(client, userdata, message):
+    # print(f'Received Message: {str(message.payload.decode("utf-8"))} on topic {message.topic}')
     pass
-
 # Callback function that executes when client receives CONNACK from broker in response to connect request.
 def on_connect(client, userdata, flags, rc):
     for topic in mqttClientSubscriptions:
@@ -46,11 +55,6 @@ def on_disconnect(client, userdata, rc):
 #     print("Received Potmeter Message: ", str(data))   
 #     client.publish("actuators/servo", message.payload)  #Publishes messages received directly to actuators/servo topic
 
-# Message callback function, specifically to handle any messages on topics related to ROS.
-def rosCallback(client, userdata, message):
-    print("Received ROS Message: ", str(msgpack.unpackb(message.payload, raw=False)))   # Decodes MessagePack-encoded string into Python dictionary. 
-                                                                                        # raw=False indicates decode string values as Unicode strings not binary 
-                                                                                        # strings.
 # Publishes data to MQTT topics and distinguishes between normal topics and those for communication with the robot. 
 def mqttPublishData(client, topic, data):
         if type(data) is not dict:

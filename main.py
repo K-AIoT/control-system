@@ -22,6 +22,11 @@ async def main():
             ("18b95a2b-2c42-2c19-e488-56e7bcd0f2d2", "sensors/humidityThreshold") 
         ])
 
+        robot = devices.Robot(bridge = myBridge, pubSubPairs = [ 
+            ("robot/goalStatusArrayToMqtt", "6fe4cadf-dfcf-7dbc-3a8b-3075c4098e8b")
+            # ("robot/twistToMqtt", "6fe4cadf-dfcf-7dbc-3a8b-3075c4098e8b")
+        ])
+
         while True:
             await asyncio.sleep(1)
 
