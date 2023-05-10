@@ -10,10 +10,10 @@ mqttBrokerIp = "192.168.1.22" #raspberry pi
 # mqttBrokerIp = "172.29.69.158" #personal machine eduroam
 
 mqttClientSubscriptions = [
+    "robot/fromGoal"
     "robot/fromBuzzer",
     "robot/twistToMqtt", 
     "robot/goalStatusArrayToMqtt",  
-    "robot/fromGoal", 
     "robot/toCmd_vel", 
     "robot/fromCmd_vel",
     "robot/intListToMqtt", 

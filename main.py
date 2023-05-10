@@ -23,8 +23,10 @@ async def main():
         ])
 
         robot = devices.Robot(bridge = myBridge, pubSubPairs = [ 
-            ("robot/goalStatusArrayToMqtt", "6fe4cadf-dfcf-7dbc-3a8b-3075c4098e8b")
-            # ("robot/twistToMqtt", "6fe4cadf-dfcf-7dbc-3a8b-3075c4098e8b")
+                # ("robot/goalStatusArrayToMqtt", "6fe4cadf-dfcf-7dbc-3a8b-3075c4098e8b")
+            # ,   ("robot/twistToMqtt", "6fe4cadf-dfcf-7dbc-3a8b-3075c4098e8b")
+               ("6fe4cadf-dfcf-7dbc-3a8b-3075c4098e8b", "robot/toGoal"),
+               ("46d6d34e-622b-777a-744e-082d78f6e4c4", "robot/toGoal")
         ])
 
         while True:
