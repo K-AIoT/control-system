@@ -1,39 +1,33 @@
+from asyncua import Client
 import asyncio
 
-from asyncua import Client, ua
-from asyncua.ua import AccessLevelType
-from uuid import UUID
+opcuaServerUrl = "opc.tcp://10.64.233.49:4840"
 
-url = "opc.tcp://10.64.233.49:4840"
-namespace = "http://se.com/EcostruxureSystemExpert"
+async def my_async_function(opcuaServerUrl):
+    while True:
+        try:
+            client = Client(url=opcuaServerUrl)
+            await client.connect()
 
+            async def my_disconnected_callback(client: Client):
+                print("Disconnected from server, attempting to reconnect...")
+                while True:
+                    try:
+                        await client.connect()
+                        print("Reconnected to server")
+                        break
+                    except ConnectionError:
+                        print("Could not connect to server, retrying in 5 seconds...")
+                        await asyncio.sleep(5)
 
-async def main():
+            client.on_disconnected = my_disconnected_callback
 
-    print(f"Connecting to {url} ...")
-    async with Client(url=url) as client:
-        # Find the namespace index
-        nsidx = await client.get_namespace_index(namespace)
-        print(f"Namespace Index for '{namespace}': {nsidx}")
+            print("Connected to server")
+            while True:
+                await asyncio.sleep(1)
 
-        # nodeId = ua.NodeId(UUID("e0003595-e3e6-98f4-e46e-a2cccd71d8cb"), 2, ua.NodeIdType.Guid)
-        nodeId = "ns=2;g={3dbdca09-4b5c-b9ac-efd0-3184cdcceec3}"
-        node = client.get_node(nodeId)
-        value = await node.read_value()
-
-        print(f"Value of MyVariable ({node}): {value}")
- 
-        # try:
-        # # Attempt a write operation
-        #     await node.write_value(123)
-        #     print("Write privileges are available for the node.")
-        # except Exception as e:
-        #     print(f"Write privileges are not available for the node. Error: {e}")
-        
-        newVal = ua.DataValue(ua.Variant(55.0, ua.VariantType.Float))
-        
-        await node.write_value(newVal)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+            await client.disconnect()
+            break
+        except ConnectionError:
+            print("Could not connect to server, retrying in 5 seconds...")
+            await asyncio.sleep(5)

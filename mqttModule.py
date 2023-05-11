@@ -1,34 +1,10 @@
 # mqttModule.py
 
 import paho.mqtt.client as mqtt
-import msgpack
-import json
-
-# mqttBrokerIp = "192.168.50.74" #local home
-# mqttBrokerIp = "172.29.76.226" #local eduroam
-mqttBrokerIp = "192.168.1.22" #raspberry pi
-# mqttBrokerIp = "172.29.69.158" #personal machine eduroam
-
-mqttClientSubscriptions = [
-    "robot/fromGoal"
-    "robot/fromBuzzer",
-    "robot/twistToMqtt", 
-    "robot/goalStatusArrayToMqtt",  
-    "robot/toCmd_vel", 
-    "robot/fromCmd_vel",
-    "robot/intListToMqtt", 
-    "robot/boolToMqtt", 
-    "sensors/temperature", 
-    "sensors/humidity", 
-    "sensors/temperatureThreshold",
-    "sensors/temperature2", 
-    "resistors/potmeter"
-    ] #Make empty list here, and add function to add subscriptions that can be called from main file.
 
 # Function that creates an MQTT client, defines its callback functions and connects it to the broker via its IP address.
-def makeClient(clientName):
+def makeClient(clientName, mqttBrokerIp):
     client = mqtt.Client(client_id=clientName, protocol=mqtt.MQTTv311, transport="tcp")
-    client.on_connect = on_connect
     client.on_message = on_message
     client.on_disconnect = on_disconnect
     client.connect(mqttBrokerIp)
@@ -37,36 +13,13 @@ def makeClient(clientName):
 
 # Message callback function, to handle any messages on subscribed topics that don't have a specific callback function.
 def on_message(client, userdata, message):
-    # print(f'Received Message: {str(message.payload.decode("utf-8"))} on topic {message.topic}')
-    pass
-# Callback function that executes when client receives CONNACK from broker in response to connect request.
-def on_connect(client, userdata, flags, rc):
-    for topic in mqttClientSubscriptions:
-        client.subscribe(topic, 1)  
+    print(f'Received MQTT message on topic {message.topic} with no associated destination.')
 
 # Callback function that executes when client sends disconnect request to broker.
 def on_disconnect(client, userdata, rc):
     print("Disconnected: ", str(rc))
     client.loop_stop()
-
-# # Message callback function, specifically to handle any messages on topics that match "sensors/potemeter" (Including with wildcard use).
-# def resistorsPotmeterCallback(client, userdata, message):
-#     data = json.loads(message.payload.decode("utf8"))
-#     print("Received Potmeter Message: ", str(data))   
-#     client.publish("actuators/servo", message.payload)  #Publishes messages received directly to actuators/servo topic
-
-# Publishes data to MQTT topics and distinguishes between normal topics and those for communication with the robot. 
-def mqttPublishData(client, topic, data):
-        if type(data) is not dict:
-            data = {'data': data} # Converts to dictionary.
-            
-        if topic.startswith("robot/"):  # Checks first if the topic will be used to communicate with the robot and then if its format is compatible with the ROS topic, 
-                                        # i.e. if it's a dictionary.
-            encodedData = msgpack.packb(data)   # Encodes the data.
-            client.publish(topic, payload=encodedData, qos=1, retain=False) 
-        else:
-            client.publish(topic, payload=json.dumps(data), qos=1, retain=False) # Will cause error if data isn't a string, bytearray, int, float or None. So fixed by 
-                                                                                 # encoding payload using JSON. 
+                                                                               
 
 
         

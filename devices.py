@@ -1,36 +1,14 @@
 # devices.py
 
-import paho.mqtt.client as mqtt
-import mqttModule
 import asyncio
-from asyncua import Client, Node, ua
-from typing import List, Optional, Dict, Tuple, Any, Type, ForwardRef
+import bridge
+from asyncua import Node, ua
+from typing import List, Optional, Tuple, Type, ForwardRef
 from uuid import UUID
 import msgpack
 import re
 
-
-
-
-class MqttOpcuaBridge:
-    def __init__(self, opcuaClient: Optional[Client] = None, mqttClient: Optional[mqtt.Client] = None):
-        self._mqttClient = mqttClient
-        self._opcuaClient = opcuaClient
-
-    def getOpcuaClient(self):
-        return self._opcuaClient
-
-    def getMqttClient(self):
-        return self._mqttClient
-
-    def setOpcuaClient(self, newClient):
-        self._opcuaClient = newClient
-
-    def setMqttClient(self, newClient):
-        self._mqttClient = newClient
-
 # OPC UA Callback Handler:
-    
 class OpcuaCallback:
 
     def __init__(self, device : ForwardRef('Device')):
@@ -41,16 +19,16 @@ class OpcuaCallback:
     
     async def datachange_notification(self, node: Node, val, data: ua.DataChangeNotification):
         nodeName = await node.read_browse_name()
-        print(f"New value from OPC UA server on node {nodeName.Name}: {val}")
+        print(f"OPC UA CHANGE ON NODE: {nodeName.Name}: {val}")
         for mqttTopic in self._device.getPubSubPairs()[node]:
-            mqttModule.mqttPublishData(self._device.getBridge().getMqttClient(), mqttTopic, val)
+            self._device.getBridge().getMqttClient().publish(mqttTopic, payload=val, qos=1, retain=False)
         
     async def event_notification(self, event: ua.EventNotificationList):
         print(f"Event: {event}")
 
 class Device:
     
-    def __init__(self, bridge: Optional[MqttOpcuaBridge] = None, pubSubPairs: Optional[List[Tuple[str, str]]] = None, opcuaCallback: Optional[Optional[Type[OpcuaCallback]]] = None):
+    def __init__(self, bridge: Optional[bridge.MqttOpcuaBridge] = None, pubSubPairs: Optional[List[Tuple[str, str]]] = None, opcuaCallback: Optional[Optional[Type[OpcuaCallback]]] = None):
         self._bridge = bridge
         self._pubSubPairs = pubSubPairs
 
@@ -134,7 +112,7 @@ class Device:
                 return bool(payload)
             case _:
                 print("Node is of an unknown data type so cannot be handled.")
-                return 
+                return None
 
     # MQTT Callback Function:
 
@@ -145,46 +123,45 @@ class Device:
             
             for node in opcuaNodes:
 
-                print(f'Publishing message to OPC UA node: {node["name"]}')   
+                print(f'Publishing message to node: {node["name"]}')   
     
                 payloadValue = self.typecastForNode(node, message.payload)
-                variantFormattedPayload = ua.DataValue(ua.Variant(payloadValue, node["variantType"]))
                 
-                self._loop.create_task(node["node"].write_value(variantFormattedPayload))
-       
+                if payloadValue is not None:
+                    variantFormattedPayload = ua.DataValue(ua.Variant(payloadValue, node["variantType"]))
+                    self._loop.create_task(node["node"].write_value(variantFormattedPayload))
+
         except ValueError:
             print("Error: Could not convert payload to appropriate type")
             return
-            
-
        
 class Robot(Device):
 
-    def __init__(self, bridge: Optional[MqttOpcuaBridge] = None, pubSubPairs: Optional[List[Tuple[str, str]]] = None):
+    def __init__(self, bridge: Optional[bridge.MqttOpcuaBridge] = None, pubSubPairs: Optional[List[Tuple[str, str]]] = None):
         super().__init__(bridge, pubSubPairs, RosOpcuaCallback(self))
 
     def mqttCallback(self, client, userdata, message):
         try:    
             opcuaNodes = self._pubSubPairs[message.topic] #tuple
+            # opcuaNodes = super()._pubSubPairs[message.topic] #tuple
             rosMsgDict = msgpack.unpackb(message.payload, raw=False) #dict
 
-            # print(f'Received Message: {str(rosMsgDict)} on topic {message.topic}')
             print(f'Received ROS message on topic {message.topic}:')  
             for node in opcuaNodes:
 
                 # keyPath = [x.lower() for x in re.split(r'(?=[A-Z])', node["name"])]
                 keyPath = [x.lower() for x in re.split(r'(?=[A-Z])', "status_listStatus")]
-                                       
+                                    
                 for searchTerm in keyPath: 
                     rosMsgDict = self.getRosDictionaryValue(rosMsgDict, searchTerm)
                     key, hit = searchTerm, rosMsgDict
-  
-                print(f'Message: {key} = {hit}\nPublishing to OPC UA node: {node["name"]}')
+
+                print(f'Message: {key} = {hit}\nPublishing to node: {node["name"]}')
 
                 payloadValue = super().typecastForNode(node, hit)                
                 variantFormattedPayload = ua.DataValue(ua.Variant(payloadValue, node["variantType"]))
                 self._loop.create_task(node["node"].write_value(variantFormattedPayload))
-
+        
         except ValueError:
             print("Error: Could not convert payload to appropriate type")
             return
@@ -214,18 +191,19 @@ class RosOpcuaCallback(OpcuaCallback):
     async def datachange_notification(self, node: Node, val, data: ua.DataChangeNotification):
         try:    
             nodeName = await node.read_browse_name()
-            print(f"New value from OPC UA server on node {nodeName.Name}: {val}")
+            print(f"OPC UA CHANGE ON NODE: {nodeName.Name}: {val}")
             for mqttTopic in self._device.getPubSubPairs()[node]:
                 match val:
                     case 0:
-                        messagePayload = {'header': {'seq': 0, 'stamp': {'secs': 0, 'nsecs': 0}, 'frame_id': 'map'}, 'pose': {'position': {'x': 0.0, 'y': 0.0, 'z': 0.0}, 'orientation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 0.0}}}
+                        # messagePayload = {'header': {'seq': 0, 'stamp': {'secs': 0, 'nsecs': 0}, 'frame_id': 'map'}, 'pose': {'position': {'x': 0.0, 'y': 0.0, 'z': 0.0}, 'orientation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 0.0}}}
+                        messagePayload = {'header': {'seq': 0, 'stamp': {'secs': 1683119373, 'nsecs': 994051246}, 'frame_id': 'map'}, 'pose': {'position': {'x': -1.399324893951416, 'y': 0.36991798877716064, 'z': 0.0}, 'orientation': {'x': 0.0, 'y': 0.0, 'z': 0.9893189277112782, 'w': 0.1457671405777269}}}
                     case 1:
                         messagePayload = {'header': {'seq': 0, 'stamp': {'secs': 0, 'nsecs': 0}, 'frame_id': 'map'}, 'pose': {'position': {'x': 1.0, 'y': 0.0, 'z': 0.0}, 'orientation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 0.0}}}
                     case 2:
                         messagePayload = {'header': {'seq': 0, 'stamp': {'secs': 0, 'nsecs': 0}, 'frame_id': 'map'}, 'pose': {'position': {'x': 1.0, 'y': 1.0, 'z': 0.0}, 'orientation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 0.0}}}
                     case 3:
-                        messagePayload = {'header': {'seq': 0, 'stamp': {'secs': 0, 'nsecs': 0}, 'frame_id': 'map'}, 'pose': {'position': {'x': 1.0, 'y': 1.0, 'z': 1.0}, 'orientation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 0.0}}}
-
+                        # messagePayload = {'header': {'seq': 0, 'stamp': {'secs': 0, 'nsecs': 0}, 'frame_id': 'map'}, 'pose': {'position': {'x': 1.0, 'y': 1.0, 'z': 1.0}, 'orientation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 0.0}}}
+                        messagePayload = {'header': {'seq': 0, 'stamp': {'secs': 1683119373, 'nsecs': 994051246}, 'frame_id': 'map'}, 'pose': {'position': {'x': -1.2823765779, 'y': -0.891584396362, 'z': 0.00218486785889}, 'orientation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0}}}
                 print(f'Publishing message: {messagePayload} to MQTT topic {mqttTopic}')
                 
                 super().getDevice().getBridge().getMqttClient().publish(mqttTopic, payload = msgpack.packb(messagePayload), qos=1, retain=False)
@@ -233,10 +211,3 @@ class RosOpcuaCallback(OpcuaCallback):
         except UnboundLocalError:
             print("Received value isn't associated with a location.")
             return
-
-
-
-# packedRosMsg = msgpack.packb(messagePayload)
-# mqttClient.publish({topic}, packedRosMsg)
-
-# /move_base_simple/Goal 
