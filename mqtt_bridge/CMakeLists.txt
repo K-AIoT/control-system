@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(mqtt_bridge)
 
-find_package(catkin REQUIRED COMPONENTS message_generation std_msgs rospy)
+find_package(catkin REQUIRED COMPONENTS message_generation std_msgs rospy geometry_msgs actionlib_msgs)
 catkin_python_setup()
 #catkin_package()
 
@@ -13,6 +13,8 @@ add_message_files(
 generate_messages(
 	DEPENDENCIES
 	std_msgs
+	geometry_msgs
+	actionlib_msgs
 )
 
 catkin_package(

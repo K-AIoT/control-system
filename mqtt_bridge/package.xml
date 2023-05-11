@@ -24,7 +24,9 @@
   <exec_depend>python3-paho-mqtt</exec_depend>
   <exec_depend>python3-pymongo</exec_depend>
   <exec_depend>python-inject-pip</exec_depend>
-
+  <build_depend>actionlib_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  
   <export>
   </export>
 </package>
