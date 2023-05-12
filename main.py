@@ -4,7 +4,6 @@ import asyncio
 import devices
 import bridge
 import mqttModule
-import opcuaModule
 from asyncua import Client
 
 # mqttBrokerIp = "192.168.50.74" #local home
