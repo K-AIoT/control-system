@@ -2,7 +2,7 @@ mqtt:
         client:
                 protocol: 4
         connection:
-                host: 192.168.50.192
+                host: 192.168.1.22
                 port: 1883
                 keepalive: 60
         private_path: robot
@@ -26,3 +26,35 @@ bridge:
           msg_type: mqtt_bridge.msg:IntList
           topic_from: ~/intListToRos
           topic_to: /robot/intListToRos
+          
+          #Communication Using GoalStatusArray msg Type
+        - factory: mqtt_bridge.bridge:RosToMqttBridge
+          msg_type: actionlib_msgs.msg:GoalStatusArray 
+          topic_from: /robot/goalStatusArrayToMqtt
+          topic_to: ~/goalStatusArrayToMqtt
+        - factory: mqtt_bridge.bridge:MqttToRosBridge
+          msg_type: actionlib_msgs.msg:GoalStatusArray 
+          topic_from: ~/goalStatusArrayToRos
+          topic_to: /robot/goalStatusArrayToRos
+          
+          #Twist Communication
+        - factory: mqtt_bridge.bridge:RosToMqttBridge
+          msg_type: geometry_msgs.msg:Twist 
+          topic_from: /robot/twistToMqtt
+          topic_to: ~/twistToMqtt
+        - factory: mqtt_bridge.bridge:MqttToRosBridge
+          msg_type: geometry_msgs.msg:Twist 
+          topic_from: ~/twistToRos
+          topic_to: /robot/twistToRos
+        
+          #MoveBaseSimple/Goal:
+        - factory: mqtt_bridge.bridge:RosToMqttBridge
+          msg_type: geometry_msgs.msg:PoseStamped 
+          topic_from: /move_base_simple/goal
+          topic_to: ~/fromGoal
+        - factory: mqtt_bridge.bridge:MqttToRosBridge
+          msg_type: geometry_msgs.msg:PoseStamped 
+          topic_from: ~/toGoal
+          topic_to: /move_base_simple/goal
+
+
