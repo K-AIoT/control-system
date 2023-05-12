@@ -19,7 +19,6 @@ async def main():
     print(f"Connecting to {opcuaServerUrl} ...")
 
     async with Client(url=opcuaServerUrl) as client:
-        client.on_disconnected = opcuaModule.opcuaOnDisconnect
         nxtTechBridge = bridge.MqttOpcuaBridge(client, mqttClient)
         
         dht22TempHumiditySensor = devices.Device(
