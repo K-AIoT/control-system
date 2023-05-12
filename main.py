@@ -6,20 +6,18 @@ import bridge
 import mqttModule
 from asyncua import Client
 
-# mqttBrokerIp = "192.168.50.74" #local home
-# mqttBrokerIp = "172.29.76.226" #local eduroam
+#MQTT Client Initialisation:
 mqttBrokerIp = "192.168.1.22" #raspberry pi
-# mqttBrokerIp = "172.29.69.158" #personal machine eduroam
 mqttClient = mqttModule.makeClient("mqttClient", mqttBrokerIp)
 
+#OPC UA Server Details:
 opcuaServerUrl = "opc.tcp://10.64.233.49:4840"
-namespaceUri = "http://se.com/EcostruxureSystemExpert"
 
 async def main():
     print(f"Connecting to {opcuaServerUrl} ...")
 
-    async with Client(url=opcuaServerUrl) as client:
-        nxtTechBridge = bridge.MqttOpcuaBridge(client, mqttClient)
+    async with Client(url=opcuaServerUrl) as client: # Defines and initialises an OPC UA client and an associated asynchronous context block.
+        nxtTechBridge = bridge.MqttOpcuaBridge(client, mqttClient) # Defines and initialises a bridge object to store the OPC UA and MQTT clients.
         
         dht22TempHumiditySensor = devices.Device(
             bridge = nxtTechBridge, 
