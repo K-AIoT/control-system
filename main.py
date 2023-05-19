@@ -25,13 +25,6 @@ async def main():
                             ("sensors/humidity", "46d6d34e-622b-777a-744e-082d78f6e4c4")
         ])
 
-        robot = devices.Robot(
-            bridge = nxtTechBridge, 
-            pubSubPairs = [ ("6fe4cadf-dfcf-7dbc-3a8b-3075c4098e8b", "robot/toGoal"),
-                            # ("sensorsTest", "6fe4cadf-dfcf-7dbc-3a8b-3075c4098e8b"),
-                            ("robot/goalStatusArrayToMqtt", "6fe4cadf-dfcf-7dbc-3a8b-3075c4098e8b")
-        ])
-
         dht22DcMotor = devices.Device(
             bridge = nxtTechBridge, 
             pubSubPairs = [ ("62975aeb-ed5c-e4c0-c60f-035cc56ee09e", "dry/speed"),
@@ -54,11 +47,29 @@ async def main():
 
         # robot = devices.Robot(
         #     bridge = nxtTechBridge, 
-        #     pubSubPairs = [ ("robot/voltageToMqtt ", ""),
-        #                     ("robot/fromCmdVel ", ""),
-        #                     ("robot/fromStatus", ""),
-        #                     ("", "robot/toGoal")
+        #     pubSubPairs = [ ("robot/voltageToMqtt", "9cea813c-6199-26ed-abee-e7c93229ed6f"),    #voltage
         # ])
+
+        robot = devices.Robot(
+            bridge = nxtTechBridge, 
+            pubSubPairs = [ ("robot/voltageToMqtt", "9cea813c-6199-26ed-abee-e7c93229ed6f"),    #voltage
+                            ("robot/fromCmdVel", "56bd9ac6-9460-2822-61b9-660ae9186f04"),       #angularX
+                            ("robot/fromCmdVel", "33ee6565-5a27-e7c0-2230-32c97f49b6e5"),       #angularY
+                            ("robot/fromCmdVel", "80a434ff-e3ea-b250-305e-40613ed4f2b3"),       #angularZ
+                            ("robot/fromCmdVel", "8c201322-e9d9-bef4-cb3b-92c710e98a22"),       #linearX
+                            ("robot/fromCmdVel", "c8165fd4-0685-cb44-a0a9-8ea39ce1b29d"),       #linearY  
+                            ("robot/fromCmdVel", "26739853-cfb5-63e1-4b17-592ec6eaa24e"),       #linearZ
+                            ("robot/fromStatus", "cf9317b2-833d-b9c9-ab92-fd3031d6542b"),       #goal_idStatus
+                            ("robot/fromGoal", "6d68d432-ebf1-bee3-0d99-28fbefc60bf7"),         #orientationW
+                            ("robot/fromGoal", "acd4f401-e2c9-6173-ebe2-652d8a20fb3c"),         #orientationX
+                            ("robot/fromGoal", "6004cbb2-54e0-389a-075e-032c8dde67fb"),         #orientationY
+                            ("robot/fromGoal", "a5bb792c-008e-0d9b-a838-17fae76688f9"),         #orientationZ
+                            ("robot/fromGoal", "6d334997-846a-45f3-2175-c77982cbded3"),         #positionX
+                            ("robot/fromGoal", "395e04f6-8e50-cb3e-ddea-8bbb220b3471"),         #positionY
+                            ("robot/fromGoal", "d94f18e8-305b-f21e-6fec-c8a3c58adecf"),         #positionZ
+                            ("5b05e394-f794-3b52-e5a7-fe36049affa5", "robot/toGoal")            #position_id
+
+        ])
 
         while True:
             await asyncio.sleep(1)

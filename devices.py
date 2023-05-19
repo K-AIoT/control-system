@@ -102,6 +102,7 @@ class Device:
 
     # Typecasts the message payload appropriately based on the data type of the OPC UA node receiving it.
     def typecastForNode(self, node, payload):
+       
         match node["variantType"].name:
             case "Float":
                 return float(payload) 
@@ -109,6 +110,10 @@ class Device:
                 return str(payload)
             case "Boolean":
                 return bool(payload)
+            case "Double":
+                return float(payload)
+            case "Byte":
+                return int(payload)
             case _:
                 print("Node is of an unknown data type so cannot be handled.")
                 return None
@@ -124,7 +129,7 @@ class Device:
                 print(f'Publishing message to node: {node["name"]}')   
     
                 payloadValue = self.typecastForNode(node, message.payload) 
-                
+                print(payloadValue)
                 if payloadValue is not None:
                     variantFormattedPayload = ua.DataValue(ua.Variant(payloadValue, node["variantType"]))
                     self._loop.create_task(node["node"].write_value(variantFormattedPayload)) # Create a task in the current event loop that writes the correctly formatted message to each associated subscribing OPC UA node iterated through.
@@ -145,16 +150,20 @@ class Robot(Device): # A child class of the Device class, specifically for repre
 
             print(f'Received ROS message on topic {message.topic}:')  
             for node in opcuaNodes:
-
-                keyPath = [x.lower() for x in re.split(r'(?=[A-Z])', "status_listStatus")] # Takes the OPC UA node name and splits it into a list of parts, each representing a subdictionary within the corresponding ROS message. Makes it possible to differentiate between two keys of the same name but within different parts of a message. Separator is a uppercase letter since ROS messages use '-' within names and NxTTech will not accept any other special characters in node names.
-                                    
+                # keyPath = [x.lower() for x in re.split(r'(?=[A-Z])', "status_listStatus")] # Takes the OPC UA node name and splits it into a list of parts, each representing a subdictionary within the corresponding ROS message. Makes it possible to differentiate between two keys of the same name but within different parts of a message. Separator is a uppercase letter since ROS messages use '-' within names and NxTTech will not accept any other special characters in node names.
+                keyPath = [x.lower() for x in re.split(r'(?=[A-Z])', node["name"])] # Takes the OPC UA node name and splits it into a list of parts, each representing a subdictionary within the corresponding ROS message. Makes it possible to differentiate between two keys of the same name but within different parts of a message. Separator is a uppercase letter since ROS messages use '-' within names and NxTTech will not accept any other special characters in node names.
+                containerToSearch = rosMsgDict
                 for searchTerm in keyPath: # Finds the value key pair in the ROS message dictionary received.
-                    rosMsgDict = self.getRosDictionaryValue(rosMsgDict, searchTerm)
-                    key, hit = searchTerm, rosMsgDict
+                    if searchTerm == "std_msgs":
+                        key, hit = "data", containerToSearch['data']
+                        break
+                    else:
+                        containerToSearch = self.getRosDictionaryValue(containerToSearch, searchTerm)
+                        key, hit = searchTerm, containerToSearch
 
-                print(f'Message: {key} = {hit}\nPublishing to node: {node["name"]}')
+                print(f'Publishing {key} = {hit} to node: {node["name"]}\n')
 
-                payloadValue = super().typecastForNode(node, hit)                
+                payloadValue = super().typecastForNode(node, hit)              
                 variantFormattedPayload = ua.DataValue(ua.Variant(payloadValue, node["variantType"]))
                 #DOUBLE CHECK BELOW, should self._loop work?
                 self._loop.create_task(node["node"].write_value(variantFormattedPayload)) # Create a task in the current event loop that writes the correctly formatted message to each associated subscribing OPC UA node iterated through.
@@ -164,21 +173,25 @@ class Robot(Device): # A child class of the Device class, specifically for repre
             return
 
     def getRosDictionaryValue(self, msgToSearch, searchKey: str):
-                
-        if (isinstance(msgToSearch, list) and all(isinstance(item, dict) for item in msgToSearch)): # Checks if the message being searched is a list of dictionaries.
+        if isinstance(msgToSearch, list) and all(isinstance(item, dict) for item in msgToSearch):
             for dictionary in msgToSearch:
-                for key, entry in dictionary.items():          
-                    if(key == searchKey):
+                for key, entry in dictionary.items():    
+                    if key == searchKey:
                         return entry
-                    if isinstance(entry, dict) or (isinstance(entry, list) and all(isinstance(item, dict) for item in entry)): # Checks if the entry being iterated through is a dictionary or a list of dictionaries.
-                        self.getRosDictionaryValue(entry, searchKey) # Recursively calls itself to search through the entry list/dictionary.
-        
+                    if isinstance(entry, dict) or (isinstance(entry, list) and all(isinstance(item, dict) for item in entry)):
+                        result = self.getRosDictionaryValue(entry, searchKey)
+                        if result is not None:
+                            return result
+            
         elif isinstance(msgToSearch, dict):
-            for key, entry in msgToSearch.items():         
-                if(key == searchKey):
+            for key, entry in msgToSearch.items():    
+                if key == searchKey:
                     return entry
-                if isinstance(entry, dict) or (isinstance(entry, list) and all(isinstance(item, dict) for item in entry)): # Checks if the entry being iterated through is a dictionary or a list of dictionaries.
-                    self.getRosDictionaryValue(entry, searchKey) # Recursively calls itself to search through the entry list/dictionary.
+                if isinstance(entry, dict) or (isinstance(entry, list) and all(isinstance(item, dict) for item in entry)):
+                    result = self.getRosDictionaryValue(entry, searchKey)
+                    if result is not None:
+                        return result
+
 
 class RosOpcuaCallback(OpcuaCallback):
 
