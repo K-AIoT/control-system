@@ -8,19 +8,19 @@ mqtt:
         private_path: robot
        
 bridge:
-          #Voltage Data Communication
+          #Voltage Topic Bridge:  
         - factory: mqtt_bridge.bridge:RosToMqttBridge
           msg_type: std_msgs.msg:Float32
           topic_from: /voltage
           topic_to: ~/voltageToMqtt
           
-          #Twist Communication
+          #Cmd_vel Topic Bridge:
         - factory: mqtt_bridge.bridge:RosToMqttBridge
           msg_type: geometry_msgs.msg:Twist 
           topic_from: /cmd_vel
           topic_to: ~/fromCmdVel
         
-          #MoveBaseSimple/Goal:
+          #Move_base_simple/goal Bridge:
         - factory: mqtt_bridge.bridge:RosToMqttBridge
           msg_type: geometry_msgs.msg:PoseStamped 
           topic_from: /move_base_simple/goal
@@ -30,7 +30,7 @@ bridge:
           topic_from: ~/toGoal
           topic_to: /move_base_simple/goal
           
-          #/move_base/status Messages:
+          #Move_base/status Topic Bridge:
         - factory: mqtt_bridge.bridge:RosToMqttBridge
           msg_type: actionlib_msgs.msg:GoalStatusArray 
           topic_from: /move_base/status
